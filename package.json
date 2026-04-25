@@ -1,6 +1,6 @@
 {
   "name": "react-native-omni-select",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "The omni-platform select component for React Native - iOS, Android, Web, Expo, Next.js SSR",
   "main": "lib/commonjs/index.js",
   "module": "lib/module/index.js",
