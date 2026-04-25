@@ -1,13 +1,14 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  Modal, 
-  FlatList, 
-  TextInput, 
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  FlatList,
+  TextInput,
   StyleSheet,
   Platform,
+  type StyleProp,
   type ViewStyle,
 } from 'react-native';
 
@@ -35,49 +36,29 @@ interface DropdownProps<T extends ItemType = ItemType> {
   disabled?: boolean;
   
   // Styling
-  style?: ViewStyle;
-  dropdownStyle?: ViewStyle;
-  itemStyle?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
+  dropdownStyle?: StyleProp<ViewStyle>;
+  itemStyle?: StyleProp<ViewStyle>;
   
   // Custom rendering
   renderItem?: (item: T, isSelected: boolean) => React.ReactNode;
 }
 
-// Platform detection
 const isWeb = Platform.OS === 'web';
 
-// Omni-platform position measurement that works everywhere
 const measureElement = (
-  ref: React.RefObject<TouchableOpacity>, 
-  callback: (x: number, y: number, width: number, height: number) => void
+  ref: React.RefObject<TouchableOpacity | null>,
+  callback: (x: number, y: number, width: number, height: number) => void,
 ) => {
   if (isWeb) {
-    // Web platform: use getBoundingClientRect
-    const element = ref.current as any;
-    if (element?._nativeTag) {
-      const node = document.querySelector(`[data-reactroot] [data-testid]`) || 
-                   element._nativeTag;
-      if (node && typeof node.getBoundingClientRect === 'function') {
-        const rect = node.getBoundingClientRect();
-        callback(rect.x, rect.y, rect.width, rect.height);
-        return;
-      }
+    const node = ref.current as unknown as Element | null;
+    if (node && typeof node.getBoundingClientRect === 'function') {
+      const rect = node.getBoundingClientRect();
+      callback(rect.left, rect.top, rect.width, rect.height);
     }
-    // Fallback for web
-    if (element && element.getBoundingClientRect) {
-      const rect = element.getBoundingClientRect();
-      callback(rect.x, rect.y, rect.width, rect.height);
-    } else if (element?._nativeTag?.getBoundingClientRect) {
-      const rect = element._nativeTag.getBoundingClientRect();
-      callback(rect.x, rect.y, rect.width, rect.height);
-    } else {
-      // Last resort - estimate position
-      callback(0, 100, 300, 40);
-    }
-  } else {
-    // Native platforms: use measureInWindow
-    ref.current?.measureInWindow(callback);
+    return;
   }
+  ref.current?.measureInWindow(callback);
 };
 
 function Dropdown<T extends ItemType = ItemType>({
@@ -117,12 +98,10 @@ function Dropdown<T extends ItemType = ItemType>({
     return (item as any).value ?? item;
   }, [valueField]);
   
-  // Normalized selected values
   const selectedItems = useMemo((): T[] => {
-    if (!value) return [];
-    if (multiple) return Array.isArray(value) ? value : [value as T];
-    return Array.isArray(value) ? value : [value as T];
-  }, [value, multiple]);
+    if (value == null) return [];
+    return Array.isArray(value) ? value : [value];
+  }, [value]);
   
   // Filtered data based on search
   const filteredData = useMemo(() => {
@@ -149,10 +128,22 @@ function Dropdown<T extends ItemType = ItemType>({
     );
   }, [selectedItems, extractValue]);
   
-  // Handle selection
+  const handleClose = useCallback(() => {
+    setIsOpen(false);
+    setSearchQuery('');
+  }, []);
+
+  const handleOpen = useCallback(() => {
+    if (disabled) return;
+    measureElement(triggerRef, (_, y, width, height) => {
+      setDropdownPos({ top: y + height, width });
+      setIsOpen(true);
+    });
+  }, [disabled]);
+
   const handleSelect = useCallback((item: T) => {
     if (disabled) return;
-    
+
     if (multiple) {
       const newValue = isItemSelected(item)
         ? selectedItems.filter(s => extractValue(s) !== extractValue(item))
@@ -160,20 +151,9 @@ function Dropdown<T extends ItemType = ItemType>({
       onChange?.(newValue as T[]);
     } else {
       onChange?.(item);
-      setIsOpen(false);
+      handleClose();
     }
-  }, [disabled, multiple, isItemSelected, selectedItems, extractValue, onChange]);
-  
-  // Handle opening - OMNI SOLUTION
-  const handleOpen = useCallback(() => {
-    if (disabled) return;
-    
-    // Use omni measurement function
-    measureElement(triggerRef, (_, y, width, height) => {
-      setDropdownPos({ top: y + height, width });
-      setIsOpen(true);
-    });
-  }, [disabled]);
+  }, [disabled, multiple, isItemSelected, selectedItems, extractValue, onChange, handleClose]);
   
   // Render list item
   const renderListItem = ({ item }: { item: T }) => {
@@ -220,12 +200,12 @@ function Dropdown<T extends ItemType = ItemType>({
         visible={isOpen}
         transparent
         animationType="fade"
-        onRequestClose={() => setIsOpen(false)}
+        onRequestClose={handleClose}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.overlay}
           activeOpacity={1}
-          onPress={() => setIsOpen(false)}
+          onPress={handleClose}
         >
           <View style={[
             styles.dropdown,
@@ -249,7 +229,12 @@ function Dropdown<T extends ItemType = ItemType>({
             <FlatList<T>
               data={filteredData}
               renderItem={renderListItem}
-              keyExtractor={(item, index) => String(extractValue(item) ?? index)}
+              keyExtractor={(item, index) => {
+                const v = extractValue(item);
+                return typeof v === 'string' || typeof v === 'number'
+                  ? String(v)
+                  : String(index);
+              }}
               contentContainerStyle={filteredData.length === 0 && styles.emptyContainer}
               ListEmptyComponent={
                 <Text style={styles.emptyText}>{noResultsText}</Text>
