@@ -1,14 +1,15 @@
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import type React from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  Modal,
   FlatList,
-  TextInput,
-  StyleSheet,
+  Modal,
   Platform,
   type StyleProp,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
   type ViewStyle,
 } from 'react-native';
 
@@ -20,26 +21,26 @@ interface DropdownProps<T extends ItemType = ItemType> {
   data: T[];
   value?: T | T[] | null;
   onChange?: (value: T | T[] | null) => void;
-  
+
   // Field extractors - can be keys or functions
   labelField?: T extends object ? keyof T | ((item: T) => string) : never;
   valueField?: T extends object ? keyof T | ((item: T) => any) : never;
-  
+
   // UI options
   placeholder?: string;
   searchPlaceholder?: string;
   noResultsText?: string;
-  
+
   // Features
   search?: boolean;
   multiple?: boolean;
   disabled?: boolean;
-  
+
   // Styling
   style?: StyleProp<ViewStyle>;
   dropdownStyle?: StyleProp<ViewStyle>;
   itemStyle?: StyleProp<ViewStyle>;
-  
+
   // Custom rendering
   renderItem?: (item: T, isSelected: boolean) => React.ReactNode;
 }
@@ -47,7 +48,7 @@ interface DropdownProps<T extends ItemType = ItemType> {
 const isWeb = Platform.OS === 'web';
 
 const measureElement = (
-  ref: React.RefObject<TouchableOpacity | null>,
+  ref: React.RefObject<View | null>,
   callback: (x: number, y: number, width: number, height: number) => void,
 ) => {
   if (isWeb) {
@@ -81,37 +82,41 @@ function Dropdown<T extends ItemType = ItemType>({
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [dropdownPos, setDropdownPos] = useState({ top: 0, width: 0 });
-  const triggerRef = useRef<TouchableOpacity>(null);
-  
+  const triggerRef = useRef<View>(null);
+
   // Generic extractors that work with any data type
-  const extractLabel = useCallback((item: T): string => {
-    if (typeof item === 'string' || typeof item === 'number') return String(item);
-    if (typeof labelField === 'function') return labelField(item as T & object);
-    if (labelField) return String((item as any)[labelField]);
-    return String((item as any).label || item);
-  }, [labelField]);
-  
-  const extractValue = useCallback((item: T): any => {
-    if (typeof item === 'string' || typeof item === 'number') return item;
-    if (typeof valueField === 'function') return valueField(item as T & object);
-    if (valueField) return (item as any)[valueField];
-    return (item as any).value ?? item;
-  }, [valueField]);
-  
+  const extractLabel = useCallback(
+    (item: T): string => {
+      if (typeof item === 'string' || typeof item === 'number') return String(item);
+      if (typeof labelField === 'function') return labelField(item as T & object);
+      if (labelField) return String((item as any)[labelField]);
+      return String((item as any).label || item);
+    },
+    [labelField],
+  );
+
+  const extractValue = useCallback(
+    (item: T): any => {
+      if (typeof item === 'string' || typeof item === 'number') return item;
+      if (typeof valueField === 'function') return valueField(item as T & object);
+      if (valueField) return (item as any)[valueField];
+      return (item as any).value ?? item;
+    },
+    [valueField],
+  );
+
   const selectedItems = useMemo((): T[] => {
     if (value == null) return [];
     return Array.isArray(value) ? value : [value];
   }, [value]);
-  
+
   // Filtered data based on search
   const filteredData = useMemo(() => {
     if (!search || !searchQuery) return data;
     const query = searchQuery.toLowerCase();
-    return data.filter(item => 
-      extractLabel(item).toLowerCase().includes(query)
-    );
+    return data.filter((item) => extractLabel(item).toLowerCase().includes(query));
   }, [data, search, searchQuery, extractLabel]);
-  
+
   // Display text for trigger
   const displayText = useMemo(() => {
     const count = selectedItems.length;
@@ -119,15 +124,16 @@ function Dropdown<T extends ItemType = ItemType>({
     if (count === 1) return extractLabel(selectedItems[0]);
     return `${count} selected`;
   }, [selectedItems, placeholder, extractLabel]);
-  
+
   // Check if item is selected
-  const isItemSelected = useCallback((item: T): boolean => {
-    const itemValue = extractValue(item);
-    return selectedItems.some(selected => 
-      extractValue(selected) === itemValue
-    );
-  }, [selectedItems, extractValue]);
-  
+  const isItemSelected = useCallback(
+    (item: T): boolean => {
+      const itemValue = extractValue(item);
+      return selectedItems.some((selected) => extractValue(selected) === itemValue);
+    },
+    [selectedItems, extractValue],
+  );
+
   const handleClose = useCallback(() => {
     setIsOpen(false);
     setSearchQuery('');
@@ -135,30 +141,33 @@ function Dropdown<T extends ItemType = ItemType>({
 
   const handleOpen = useCallback(() => {
     if (disabled) return;
+    setIsOpen(true);
     measureElement(triggerRef, (_, y, width, height) => {
       setDropdownPos({ top: y + height, width });
-      setIsOpen(true);
     });
   }, [disabled]);
 
-  const handleSelect = useCallback((item: T) => {
-    if (disabled) return;
+  const handleSelect = useCallback(
+    (item: T) => {
+      if (disabled) return;
 
-    if (multiple) {
-      const newValue = isItemSelected(item)
-        ? selectedItems.filter(s => extractValue(s) !== extractValue(item))
-        : [...selectedItems, item];
-      onChange?.(newValue as T[]);
-    } else {
-      onChange?.(item);
-      handleClose();
-    }
-  }, [disabled, multiple, isItemSelected, selectedItems, extractValue, onChange, handleClose]);
-  
+      if (multiple) {
+        const newValue = isItemSelected(item)
+          ? selectedItems.filter((s) => extractValue(s) !== extractValue(item))
+          : [...selectedItems, item];
+        onChange?.(newValue as T[]);
+      } else {
+        onChange?.(item);
+        handleClose();
+      }
+    },
+    [disabled, multiple, isItemSelected, selectedItems, extractValue, onChange, handleClose],
+  );
+
   // Render list item
   const renderListItem = ({ item }: { item: T }) => {
     const selected = isItemSelected(item);
-    
+
     if (renderItem) {
       return (
         <TouchableOpacity onPress={() => handleSelect(item)}>
@@ -166,19 +175,17 @@ function Dropdown<T extends ItemType = ItemType>({
         </TouchableOpacity>
       );
     }
-    
+
     return (
       <TouchableOpacity
         style={[styles.item, itemStyle, selected && styles.selectedItem]}
         onPress={() => handleSelect(item)}
       >
-        <Text style={[styles.itemText, selected && styles.selectedText]}>
-          {extractLabel(item)}
-        </Text>
+        <Text style={[styles.itemText, selected && styles.selectedText]}>{extractLabel(item)}</Text>
       </TouchableOpacity>
     );
   };
-  
+
   return (
     <>
       {/* Trigger Button */}
@@ -189,29 +196,25 @@ function Dropdown<T extends ItemType = ItemType>({
         disabled={disabled}
         activeOpacity={0.7}
       >
-        <Text style={[styles.triggerText, !selectedItems.length && styles.placeholder]} numberOfLines={1}>
+        <Text
+          style={[styles.triggerText, !selectedItems.length && styles.placeholder]}
+          numberOfLines={1}
+        >
           {displayText}
         </Text>
         <Text style={styles.arrow}>▼</Text>
       </TouchableOpacity>
-      
+
       {/* Dropdown Modal */}
-      <Modal
-        visible={isOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={handleClose}
-      >
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
-          onPress={handleClose}
-        >
-          <View style={[
-            styles.dropdown,
-            dropdownStyle,
-            { top: dropdownPos.top, width: dropdownPos.width }
-          ]}>
+      <Modal visible={isOpen} transparent animationType="fade" onRequestClose={handleClose}>
+        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={handleClose}>
+          <View
+            style={[
+              styles.dropdown,
+              dropdownStyle,
+              { top: dropdownPos.top, width: dropdownPos.width },
+            ]}
+          >
             {/* Search Input */}
             {search && (
               <TextInput
@@ -224,21 +227,17 @@ function Dropdown<T extends ItemType = ItemType>({
                 autoCapitalize="none"
               />
             )}
-            
+
             {/* Items List */}
             <FlatList<T>
               data={filteredData}
               renderItem={renderListItem}
               keyExtractor={(item, index) => {
                 const v = extractValue(item);
-                return typeof v === 'string' || typeof v === 'number'
-                  ? String(v)
-                  : String(index);
+                return typeof v === 'string' || typeof v === 'number' ? String(v) : String(index);
               }}
               contentContainerStyle={filteredData.length === 0 && styles.emptyContainer}
-              ListEmptyComponent={
-                <Text style={styles.emptyText}>{noResultsText}</Text>
-              }
+              ListEmptyComponent={<Text style={styles.emptyText}>{noResultsText}</Text>}
             />
           </View>
         </TouchableOpacity>
@@ -328,6 +327,6 @@ const styles = StyleSheet.create({
   },
 });
 
+export type { DropdownProps, ItemType };
 // Export with proper generic typing
 export { Dropdown };
-export type { DropdownProps, ItemType };
