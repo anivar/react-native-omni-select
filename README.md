@@ -3,9 +3,14 @@
 A lightweight, omni-platform dropdown component for React Native that works everywhere - iOS, Android, and Web.
 
 [![npm version](https://img.shields.io/npm/v/react-native-omni-select.svg)](https://www.npmjs.com/package/react-native-omni-select)
+[![npm downloads](https://img.shields.io/npm/dm/react-native-omni-select.svg)](https://www.npmjs.com/package/react-native-omni-select)
+[![CI](https://github.com/anivar/react-native-omni-select/actions/workflows/ci.yml/badge.svg)](https://github.com/anivar/react-native-omni-select/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Bundle Size](https://img.shields.io/bundlephobia/minzip/react-native-omni-select)](https://bundlephobia.com/package/react-native-omni-select)
+[![Provenance](https://img.shields.io/badge/npm-provenance-success?logo=npm)](https://docs.npmjs.com/generating-provenance-statements)
+[![React Native](https://img.shields.io/badge/React%20Native-0.72%2B-61dafb?logo=react)](https://reactnative.dev/)
+[![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20Android%20%7C%20Web-lightgrey)](https://github.com/anivar/react-native-omni-select)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
+[![Bundle Size](https://img.shields.io/bundlephobia/minzip/react-native-omni-select)](https://bundlephobia.com/package/react-native-omni-select)
 
 ## ✨ Features
 
