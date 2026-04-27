@@ -45,7 +45,7 @@ export const CustomTypeExample = () => {
         <Dropdown<User>
           data={users}
           value={selectedUser}
-          onChange={setSelectedUser}
+          onChange={(value) => setSelectedUser(value as User | null)}
           labelField="name"
           valueField="id"
           placeholder="Select a user"
@@ -75,7 +75,7 @@ export const CustomTypeExample = () => {
         <Dropdown<Product>
           data={products}
           value={selectedProduct}
-          onChange={setSelectedProduct}
+          onChange={(value) => setSelectedProduct(value as Product | null)}
           labelField="title"
           valueField="sku"
           placeholder="Select a product"

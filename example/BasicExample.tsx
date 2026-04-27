@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Dropdown } from 'react-native-omni-select';
 
+type Language = { label: string; value: string };
+
 export const BasicExample = () => {
   const [selectedFruit, setSelectedFruit] = useState<string | null>(null);
-  const [selectedLanguage, setSelectedLanguage] = useState(null);
+  const [selectedLanguage, setSelectedLanguage] = useState<Language | null>(null);
 
   const fruits = ['Apple', 'Banana', 'Orange', 'Mango', 'Grape'];
-  
-  const languages = [
+
+  const languages: Language[] = [
     { label: 'JavaScript', value: 'js' },
     { label: 'TypeScript', value: 'ts' },
     { label: 'Python', value: 'py' },
@@ -22,10 +24,10 @@ export const BasicExample = () => {
       
       <View style={styles.section}>
         <Text style={styles.label}>Simple String Array:</Text>
-        <Dropdown
+        <Dropdown<string>
           data={fruits}
           value={selectedFruit}
-          onChange={setSelectedFruit}
+          onChange={(value) => setSelectedFruit(value as string | null)}
           placeholder="Select a fruit"
         />
         {selectedFruit && (
@@ -35,10 +37,10 @@ export const BasicExample = () => {
 
       <View style={styles.section}>
         <Text style={styles.label}>Object Array:</Text>
-        <Dropdown
+        <Dropdown<Language>
           data={languages}
           value={selectedLanguage}
-          onChange={setSelectedLanguage}
+          onChange={(value) => setSelectedLanguage(value as Language | null)}
           placeholder="Select a language"
         />
         {selectedLanguage && (

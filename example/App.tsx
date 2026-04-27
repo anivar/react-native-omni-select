@@ -48,8 +48,10 @@ const users: User[] = [
   { id: 5, name: 'Charlie Wilson', email: 'charlie@example.com', department: 'Sales' },
 ];
 
+type Fruit = { label: string; value: string };
+
 export default function App() {
-  const [selectedFruit, setSelectedFruit] = useState(null);
+  const [selectedFruit, setSelectedFruit] = useState<Fruit | null>(null);
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
@@ -62,10 +64,10 @@ export default function App() {
         {/* Basic Dropdown */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Basic Dropdown</Text>
-          <Dropdown
+          <Dropdown<Fruit>
             data={fruits}
             value={selectedFruit}
-            onChange={setSelectedFruit}
+            onChange={(value) => setSelectedFruit(value as Fruit | null)}
             placeholder="Select a fruit"
             style={styles.dropdown}
           />

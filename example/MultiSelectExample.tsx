@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Dropdown } from 'react-native-omni-select';
 
+type Tech = { label: string; value: string; category: string };
+
 export const MultiSelectExample = () => {
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
-  const [selectedTech, setSelectedTech] = useState<any[]>([]);
+  const [selectedTech, setSelectedTech] = useState<Tech[]>([]);
 
   const colors = ['Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Orange', 'Pink'];
-  
-  const technologies = [
+
+  const technologies: Tech[] = [
     { label: 'React Native', value: 'rn', category: 'Mobile' },
     { label: 'Flutter', value: 'flutter', category: 'Mobile' },
     { label: 'React', value: 'react', category: 'Web' },
@@ -24,10 +26,10 @@ export const MultiSelectExample = () => {
       
       <View style={styles.section}>
         <Text style={styles.label}>Select Multiple Colors:</Text>
-        <Dropdown
+        <Dropdown<string>
           data={colors}
           value={selectedColors}
-          onChange={setSelectedColors}
+          onChange={(value) => setSelectedColors((value as string[]) ?? [])}
           multiple
           placeholder="Select colors"
         />
@@ -43,10 +45,10 @@ export const MultiSelectExample = () => {
 
       <View style={styles.section}>
         <Text style={styles.label}>Select Technologies:</Text>
-        <Dropdown
+        <Dropdown<Tech>
           data={technologies}
           value={selectedTech}
-          onChange={setSelectedTech}
+          onChange={(value) => setSelectedTech((value as Tech[]) ?? [])}
           multiple
           search
           searchPlaceholder="Search technologies..."

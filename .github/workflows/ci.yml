@@ -21,6 +21,9 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
 
+      - name: Typecheck example
+        run: bun run typecheck:example
+
       - name: Lint
         run: bun run lint
 

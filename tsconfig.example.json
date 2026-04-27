@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "paths": {
+      "react-native-omni-select": ["./src/index"]
+    }
+  },
+  "include": ["example/**/*", "src/**/*"],
+  "exclude": [
+    "node_modules",
+    "lib",
+    "**/__tests__",
+    "**/*.test.ts",
+    "**/*.test.tsx"
+  ]
+}
