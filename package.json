@@ -68,7 +68,7 @@
     "@types/react": "^19.0.0",
     "jest": "^30.3.0",
     "react": "^19.1.0",
-    "react-native": "0.85.2",
+    "react-native": "0.85.3",
     "react-native-builder-bob": "^0.41.0",
     "typescript": "^6.0.3"
   },
