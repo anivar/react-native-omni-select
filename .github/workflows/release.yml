@@ -33,7 +33,12 @@ jobs:
           bunx jest --ci
           bunx bob build
 
+      # Trusted Publishing: npm exchanges this job's OIDC token for a
+      # short-lived publish token itself, once the package's npm settings
+      # name this repo + workflow as a trusted publisher. No npm secret
+      # to store or rotate. Needs a CLI that supports it.
+      - name: Update npm
+        run: npm install -g npm@latest
+
       - name: Publish
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
