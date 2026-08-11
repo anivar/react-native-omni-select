@@ -1,6 +1,7 @@
 import type React from 'react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
+  Dimensions,
   FlatList,
   Modal,
   Platform,
@@ -47,6 +48,15 @@ interface DropdownProps<T extends ItemType = ItemType> {
 
 const isWeb = Platform.OS === 'web';
 
+/** Gap kept between the panel and the edge of the window. */
+const SCREEN_MARGIN = 8;
+/** Panel height ceiling, matched by `styles.dropdown`. */
+const MAX_PANEL_HEIGHT = 300;
+/** Below this a clamped panel is too short to be useful, so flip instead. */
+const MIN_PANEL_HEIGHT = 96;
+
+type Anchor = { top: number; left: number; width: number; maxHeight: number };
+
 const measureElement = (
   ref: React.RefObject<View | null>,
   callback: (x: number, y: number, width: number, height: number) => void,
@@ -60,6 +70,27 @@ const measureElement = (
     return;
   }
   ref.current?.measureInWindow(callback);
+};
+
+/**
+ * Places the panel under its trigger, flipping above it when there is not
+ * enough room below, and clamping the height to what is actually on screen.
+ */
+export const anchorTo = (x: number, y: number, width: number, height: number): Anchor => {
+  const windowHeight = Dimensions.get('window').height;
+  const spaceBelow = windowHeight - (y + height) - SCREEN_MARGIN;
+  const spaceAbove = y - SCREEN_MARGIN;
+
+  const flip = spaceBelow < MIN_PANEL_HEIGHT && spaceAbove > spaceBelow;
+  const available = flip ? spaceAbove : spaceBelow;
+  const maxHeight = Math.max(MIN_PANEL_HEIGHT, Math.min(MAX_PANEL_HEIGHT, available));
+
+  return {
+    top: flip ? Math.max(SCREEN_MARGIN, y - maxHeight) : y + height,
+    left: x,
+    width,
+    maxHeight,
+  };
 };
 
 function Dropdown<T extends ItemType = ItemType>({
@@ -81,7 +112,9 @@ function Dropdown<T extends ItemType = ItemType>({
 }: DropdownProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, width: 0 });
+  // null until the trigger has been measured. A failed measurement must not
+  // leave the panel at width 0, which renders it invisible.
+  const [anchor, setAnchor] = useState<Anchor | null>(null);
   const triggerRef = useRef<View>(null);
 
   // Generic extractors that work with any data type
@@ -90,7 +123,10 @@ function Dropdown<T extends ItemType = ItemType>({
       if (typeof item === 'string' || typeof item === 'number') return String(item);
       if (typeof labelField === 'function') return labelField(item as T & object);
       if (labelField) return String((item as any)[labelField]);
-      return String((item as any).label || item);
+      // `??`, not `||`: an empty string, 0 or false is a label the caller chose,
+      // and `||` replaced it with String(item) — "[object Object]" for objects.
+      const label = (item as any).label;
+      return String(label ?? item);
     },
     [labelField],
   );
@@ -103,6 +139,30 @@ function Dropdown<T extends ItemType = ItemType>({
       return (item as any).value ?? item;
     },
     [valueField],
+  );
+
+  /**
+   * A comparable key for a value. Without `valueField`, `extractValue` returns
+   * the item object itself, and comparing those with `===` made selection
+   * depend on object identity: a `value` prop rebuilt from state (or arriving
+   * over the wire) never matched the item in `data`, so deselect did nothing
+   * and re-selecting appended a duplicate. The type prefix keeps `1` and `'1'`
+   * distinct.
+   */
+  const valueKey = useCallback(
+    (item: T): string => {
+      const v = extractValue(item);
+      if (v === null) return 'null';
+      if (typeof v === 'object') {
+        try {
+          return `object:${JSON.stringify(v)}`;
+        } catch {
+          return `object:${String(v)}`; // circular — fall back to identity-ish
+        }
+      }
+      return `${typeof v}:${String(v)}`;
+    },
+    [extractValue],
   );
 
   const selectedItems = useMemo((): T[] => {
@@ -128,10 +188,10 @@ function Dropdown<T extends ItemType = ItemType>({
   // Check if item is selected
   const isItemSelected = useCallback(
     (item: T): boolean => {
-      const itemValue = extractValue(item);
-      return selectedItems.some((selected) => extractValue(selected) === itemValue);
+      const key = valueKey(item);
+      return selectedItems.some((selected) => valueKey(selected) === key);
     },
-    [selectedItems, extractValue],
+    [selectedItems, valueKey],
   );
 
   const handleClose = useCallback(() => {
@@ -142,8 +202,9 @@ function Dropdown<T extends ItemType = ItemType>({
   const handleOpen = useCallback(() => {
     if (disabled) return;
     setIsOpen(true);
-    measureElement(triggerRef, (_, y, width, height) => {
-      setDropdownPos({ top: y + height, width });
+    setAnchor(null);
+    measureElement(triggerRef, (x, y, width, height) => {
+      setAnchor(anchorTo(x, y, width, height));
     });
   }, [disabled]);
 
@@ -152,8 +213,9 @@ function Dropdown<T extends ItemType = ItemType>({
       if (disabled) return;
 
       if (multiple) {
+        const key = valueKey(item);
         const newValue = isItemSelected(item)
-          ? selectedItems.filter((s) => extractValue(s) !== extractValue(item))
+          ? selectedItems.filter((s) => valueKey(s) !== key)
           : [...selectedItems, item];
         onChange?.(newValue as T[]);
       } else {
@@ -161,7 +223,7 @@ function Dropdown<T extends ItemType = ItemType>({
         handleClose();
       }
     },
-    [disabled, multiple, isItemSelected, selectedItems, extractValue, onChange, handleClose],
+    [disabled, multiple, isItemSelected, selectedItems, valueKey, onChange, handleClose],
   );
 
   // Render list item
@@ -211,8 +273,11 @@ function Dropdown<T extends ItemType = ItemType>({
           <View
             style={[
               styles.dropdown,
+              // measureInWindow is asynchronous, and getBoundingClientRect is
+              // absent on some web hosts. Until (or unless) a measurement
+              // arrives, fall back to an inset panel rather than a 0-width one.
+              anchor ?? styles.unanchored,
               dropdownStyle,
-              { top: dropdownPos.top, width: dropdownPos.width },
             ]}
           >
             {/* Search Input */}
@@ -280,11 +345,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
+  unanchored: {
+    top: 80,
+    left: SCREEN_MARGIN,
+    right: SCREEN_MARGIN,
+    maxHeight: MAX_PANEL_HEIGHT,
+  },
   dropdown: {
     position: 'absolute',
     backgroundColor: '#fff',
     borderRadius: 8,
-    maxHeight: 300,
+    maxHeight: MAX_PANEL_HEIGHT,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,

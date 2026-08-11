@@ -1,6 +1,7 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import React from 'react';
-import { Dropdown } from '../Dropdown';
+import { Dimensions } from 'react-native';
+import { anchorTo, Dropdown } from '../Dropdown';
 
 describe('Dropdown Component', () => {
   const mockData = [
@@ -146,5 +147,68 @@ describe('Dropdown Component', () => {
 
     // Should display count
     expect(getByText('2 selected')).toBeTruthy();
+  });
+});
+
+describe('Regressions', () => {
+  const objectData = [
+    { id: 'a', label: 'Alpha' },
+    { id: 'b', label: 'Beta' },
+  ];
+
+  it('deselects an item whose object identity differs from the one in data', () => {
+    const onChange = jest.fn();
+    // The value prop holds an equal-but-distinct object, as it would after a
+    // round trip through state, storage or the network.
+    const selected = [{ id: 'a', label: 'Alpha' }];
+
+    const { getByText, getAllByText } = render(
+      <Dropdown data={objectData} multiple value={selected} onChange={onChange} />,
+    );
+
+    fireEvent.press(getByText('Alpha')); // trigger shows the one selection
+    fireEvent.press(getAllByText('Alpha')[1]); // the list row
+
+    expect(onChange).toHaveBeenCalledWith([]);
+  });
+
+  it('keeps a falsy label instead of showing [object Object]', () => {
+    const withFalsyLabels = [
+      { label: '', value: 'empty' },
+      { label: 0, value: 'zero' },
+    ];
+
+    const { getByText, queryByText } = render(
+      <Dropdown data={withFalsyLabels} placeholder="Pick" />,
+    );
+
+    fireEvent.press(getByText('Pick'));
+
+    expect(getByText('0')).toBeTruthy();
+    expect(queryByText('[object Object]')).toBeNull();
+  });
+});
+
+describe('anchorTo', () => {
+  const { height } = Dimensions.get('window');
+
+  it('anchors to the trigger x, not the screen edge', () => {
+    expect(anchorTo(120, 100, 200, 44)).toMatchObject({ left: 120, width: 200, top: 144 });
+  });
+
+  it('keeps the panel inside the window when opening downward', () => {
+    const triggerY = Math.round(height / 2);
+    const { top, maxHeight } = anchorTo(0, triggerY, 200, 44);
+
+    expect(top).toBe(triggerY + 44);
+    expect(top + maxHeight).toBeLessThanOrEqual(height);
+  });
+
+  it('flips above the trigger when there is no room below', () => {
+    const triggerY = height - 40; // trigger sits at the very bottom
+    const { top, maxHeight } = anchorTo(0, triggerY, 200, 44);
+
+    expect(top + maxHeight).toBeLessThanOrEqual(triggerY);
+    expect(top).toBeGreaterThanOrEqual(8);
   });
 });
